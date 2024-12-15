@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fa">
 <head>
     <meta charset="UTF-8">
@@ -112,6 +112,8 @@
 
             <label for="roofSlope" id="roofSlopeLabel">شیب پشت‌بام (اختیاری):</label>
             <input type="text" id="roofSlope">
+	<label for="description">توضیحات (اختیاری):</label>
+	<textarea id="description" rows="5" style="resize: vertical; width: 100%;"></textarea>
 
             <button type="button" id="saveUserButton" onclick="saveUserInfo()">ذخیره اطلاعات</button>
         </form>
@@ -175,6 +177,8 @@
 
             <label for="hours">ساعات مصرف (اجباری):</label>
             <input type="number" id="hours" required>
+	<label for="description">توضیحات (اختیاری):</label>
+	<textarea id="description" rows="5" style="resize: vertical; width: 100%;"></textarea
 
             <!-- دکمه‌های ذخیره و بازگشت -->
 	<div style="display: flex; justify-content: space-between;">
@@ -196,6 +200,7 @@
                         <th id="quantityColumn">تعداد</th>
                         <th id="powerColumn">توان</th>
                         <th id="hoursColumn">ساعات مصرف</th>
+			<th id="description">توضیحات</th>
                         <th id="actionColumn">عملیات</th>
                     </tr>
                 </thead>
@@ -258,13 +263,24 @@
                 const installationLocation = document.getElementById("installationLocation").value;
                 const roofSize = document.getElementById("roofSize").value;
                 const roofSlope = document.getElementById("roofSlope").value;
+		 const description = document.getElementById("description").value;
             
 	if (!fullName.trim() || !phoneNumber.trim() || !region.trim() || !installationLocation.trim() || !roofSize.trim()) {
     alert("لطفاً همه فیلدهای ضروری را پر کنید!");
     return;
 }
 
-	    data.user = { fullName, phoneNumber, region, installationLocation, roofSize, roofSlope: roofSlope || "-" };
+const userInfo = {
+        fullName,
+        phoneNumber,
+        region,
+        installationLocation,
+        roofSize,
+        roofSlope: roofSlope || "-",
+        description: description || "-"
+    };
+
+	    data.user = { fullName, phoneNumber, region, installationLocation, roofSize, roofSlope: roofSlope || "-", description: description || "-" };
 
 
 	    alert("اطلاعات کاربر ذخیره شد!");
@@ -337,6 +353,7 @@
     const hours = document.getElementById("hours").disabled 
         ? "نامشخص" 
         : parseInt(document.getElementById("hours").value, 10); // ساعات مصرف
+    const description = document.getElementById("description").value.trim();
 
     // اعتبارسنجی داده‌ها
     if (!category || (!device && category === "دلخواه") || (!selectedDevice && category !== "دلخواه") || !quantity || (hours === null && !document.getElementById("hours").disabled)) {
@@ -350,8 +367,19 @@
         device: device.trim(),
         quantity,
         power : power || "-",
-        hours
+        hours,
+	description: description || "-" // ذخیره توضیحات
     });
+
+	const deviceInfo = {
+        category: category.trim(),
+        device: device.trim(),
+        quantity,
+        power: power || "-",
+        hours,
+        description: description || "-" // ذخیره توضیحات
+    };
+
 
     // پیام موفقیت
     alert("دستگاه با موفقیت ذخیره شد!");
@@ -410,7 +438,7 @@
     }
 
 
-
+	function downloadReport() {
 
 const characterMapping = {
         "آ": "A", "ا": "A", "ب": "B", "پ": "P", "ت": "T",
@@ -465,14 +493,13 @@ const characterMapping = {
     "دلخواه": "Custom", "نامشخص": "Unknown"
     };
 
+    function translate(text) {
+        return wordMapping[text] || translateCharacterByCharacter(text);
+    }
+
     function translateCharacterByCharacter(text) {
         return text.split("").map(char => characterMapping[char] || char).join("");
     }
-
-    function translateDeviceWord(word) {
-        return wordMapping[word] || word;
-}
-	function downloadReport() {
  
    // ترجمه اطلاعات کاربر
  
@@ -487,43 +514,33 @@ const characterMapping = {
    const userRoofSize = data.user.roofSize || "";
 
     const userRoofSlope = translateCharacterByCharacter(data.user.roofSlope || "");
+const userDescription = translateCharacterByCharacter(document.getElementById("description").value || "-");
 
  
    // ساخت هدر و ردیف‌های اطلاعات کاربر
-    let userRow = "Name,Phone Number,Region,Installation Location,Roof Size,Roof Slope\n";
+    let userRow = "Name,Phone Number,Region,Installation Location,Roof Size,Roof Slope,Description\n";
+	userRow += `${userFullName},${userPhoneNumber},${userRegion},${userInstallationLocation},${userRoofSize},${userRoofSlope},${userDescription}`;
 
-    userRow += `${userFullName},${userPhoneNumber},${userRegion},${userInstallationLocation},${userRoofSize},${userRoofSlope}\n\n`;
+// ساخت هدر و ردیف‌های اطلاعات دستگاه‌ها
+let headerRow = "Category,Device,Quantity,Power,Consumption Hours,Description\n";
+let deviceRows = data.devices
+    .map(device => {
+        const description = translateCharacterByCharacter(device.description || "-"); // ترجمه توضیحات
+        return `${translate(device.category)},${translate(device.device)},${device.quantity},${translateCharacterByCharacter(device.power)},${device.hours},${description}`;
+    })
+    .join("\n");
+        
 
+    // ترکیب داده‌ها
+    const csvContent = userRow + headerRow + deviceRows;
 
-    // ساخت هدر و ردیف‌های اطلاعات دستگاه‌ها
- 
-   let headerRow = "Category,Device,Quantity,Power,Consumption Hours\n";
-
-    let deviceRows = data.devices
-
-        .map(device => `${translateDeviceWord(device.category)},${translateDeviceWord(device.device)},${device.quantity},${device.power},${device.hours}`)
-
-        .join("\n");
-
-  // ترکیب داده‌ها
- 
-   const csvContent = userRow + headerRow + deviceRows;
-
- 
-   // ایجاد فایل CSV برای دانلود
-
+    // ایجاد فایل CSV برای دانلود
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
-
     link.href = URL.createObjectURL(blob);
-
     link.download = "report.csv"; // نام فایل CSV
- 
-   link.click();
-
+    link.click();
 }
-
-
 
 </script>
 </body>
